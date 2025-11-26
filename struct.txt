@@ -1,0 +1,450 @@
+文件夹 PATH 列表
+卷序列号为 3A6D-EA4C
+D:.
+│  struct.txt
+│  
+├─bak
+│      dentaldataset.py
+│      requirement_bak.txt
+│      structure.txt
+│      
+└─VBCD-main
+    │  dentaldataset.py
+    │  inference.py
+    │  Readme.md
+    │  requirement.txt
+    │  TEST-convert_to_h5.py
+    │  TEST-inspect_h5.py
+    │  TEST_env.py
+    │  train.py
+    │  VBCD A Voxel-Based Framework for.pdf
+    │  verify-project.py
+    │  
+    ├─checkpoints
+    │  │  debug_run_step_10.pth
+    │  │  debug_run_step_20.pth
+    │  │  my_test_step_100.pth
+    │  │  my_test_step_50.pth
+    │  │  real_train_step_100.pth
+    │  │  real_train_step_1000.pth
+    │  │  real_train_step_1100.pth
+    │  │  real_train_step_1200.pth
+    │  │  real_train_step_1300.pth
+    │  │  real_train_step_1400.pth
+    │  │  real_train_step_1500.pth
+    │  │  real_train_step_1600.pth
+    │  │  real_train_step_1700.pth
+    │  │  real_train_step_1800.pth
+    │  │  real_train_step_200.pth
+    │  │  real_train_step_300.pth
+    │  │  real_train_step_400.pth
+    │  │  real_train_step_500.pth
+    │  │  real_train_step_600.pth
+    │  │  real_train_step_700.pth
+    │  │  real_train_step_800.pth
+    │  │  real_train_step_900.pth
+    │  │  
+    │  ├─debug_run
+    │  ├─my_test
+    │  │      output_batch1_gt1_step100.ply
+    │  │      output_batch1_gt1_step50.ply
+    │  │      output_batch1_sample1_step100.ply
+    │  │      output_batch1_sample1_step50.ply
+    │  │      training.log
+    │  │      
+    │  └─real_train
+    │          GT_15_case_6_step100.ply
+    │          GT_15_case_6_step1000.ply
+    │          GT_15_case_6_step1100.ply
+    │          GT_15_case_6_step1200.ply
+    │          GT_15_case_6_step1300.ply
+    │          GT_15_case_6_step1400.ply
+    │          GT_15_case_6_step1500.ply
+    │          GT_15_case_6_step1600.ply
+    │          GT_15_case_6_step1700.ply
+    │          GT_15_case_6_step1800.ply
+    │          GT_15_case_6_step200.ply
+    │          GT_15_case_6_step300.ply
+    │          GT_15_case_6_step400.ply
+    │          GT_15_case_6_step500.ply
+    │          GT_15_case_6_step600.ply
+    │          GT_15_case_6_step700.ply
+    │          GT_15_case_6_step800.ply
+    │          GT_15_case_6_step900.ply
+    │          GT_16_case_7_step100.ply
+    │          GT_16_case_7_step1000.ply
+    │          GT_16_case_7_step1100.ply
+    │          GT_16_case_7_step1200.ply
+    │          GT_16_case_7_step1300.ply
+    │          GT_16_case_7_step1400.ply
+    │          GT_16_case_7_step1500.ply
+    │          GT_16_case_7_step1600.ply
+    │          GT_16_case_7_step1700.ply
+    │          GT_16_case_7_step1800.ply
+    │          GT_16_case_7_step200.ply
+    │          GT_16_case_7_step300.ply
+    │          GT_16_case_7_step400.ply
+    │          GT_16_case_7_step500.ply
+    │          GT_16_case_7_step600.ply
+    │          GT_16_case_7_step700.ply
+    │          GT_16_case_7_step800.ply
+    │          GT_16_case_7_step900.ply
+    │          GT_26_case_8_step100.ply
+    │          GT_26_case_8_step1000.ply
+    │          GT_26_case_8_step1100.ply
+    │          GT_26_case_8_step1200.ply
+    │          GT_26_case_8_step1300.ply
+    │          GT_26_case_8_step1400.ply
+    │          GT_26_case_8_step1500.ply
+    │          GT_26_case_8_step1600.ply
+    │          GT_26_case_8_step1700.ply
+    │          GT_26_case_8_step1800.ply
+    │          GT_26_case_8_step200.ply
+    │          GT_26_case_8_step300.ply
+    │          GT_26_case_8_step400.ply
+    │          GT_26_case_8_step500.ply
+    │          GT_26_case_8_step600.ply
+    │          GT_26_case_8_step700.ply
+    │          GT_26_case_8_step800.ply
+    │          GT_26_case_8_step900.ply
+    │          GT_37_case_2_step100.ply
+    │          GT_37_case_2_step1000.ply
+    │          GT_37_case_2_step1100.ply
+    │          GT_37_case_2_step1200.ply
+    │          GT_37_case_2_step1300.ply
+    │          GT_37_case_2_step1400.ply
+    │          GT_37_case_2_step1500.ply
+    │          GT_37_case_2_step1600.ply
+    │          GT_37_case_2_step1700.ply
+    │          GT_37_case_2_step1800.ply
+    │          GT_37_case_2_step200.ply
+    │          GT_37_case_2_step300.ply
+    │          GT_37_case_2_step400.ply
+    │          GT_37_case_2_step500.ply
+    │          GT_37_case_2_step600.ply
+    │          GT_37_case_2_step700.ply
+    │          GT_37_case_2_step800.ply
+    │          GT_37_case_2_step900.ply
+    │          GT_46_case_5_step100.ply
+    │          GT_46_case_5_step1000.ply
+    │          GT_46_case_5_step1100.ply
+    │          GT_46_case_5_step1200.ply
+    │          GT_46_case_5_step1300.ply
+    │          GT_46_case_5_step1400.ply
+    │          GT_46_case_5_step1500.ply
+    │          GT_46_case_5_step1600.ply
+    │          GT_46_case_5_step1700.ply
+    │          GT_46_case_5_step1800.ply
+    │          GT_46_case_5_step200.ply
+    │          GT_46_case_5_step300.ply
+    │          GT_46_case_5_step400.ply
+    │          GT_46_case_5_step500.ply
+    │          GT_46_case_5_step600.ply
+    │          GT_46_case_5_step700.ply
+    │          GT_46_case_5_step800.ply
+    │          GT_46_case_5_step900.ply
+    │          Pred_15_case_6_step100.ply
+    │          Pred_15_case_6_step1000.ply
+    │          Pred_15_case_6_step1100.ply
+    │          Pred_15_case_6_step1200.ply
+    │          Pred_15_case_6_step1300.ply
+    │          Pred_15_case_6_step1400.ply
+    │          Pred_15_case_6_step1500.ply
+    │          Pred_15_case_6_step1600.ply
+    │          Pred_15_case_6_step1700.ply
+    │          Pred_15_case_6_step1800.ply
+    │          Pred_15_case_6_step200.ply
+    │          Pred_15_case_6_step300.ply
+    │          Pred_15_case_6_step400.ply
+    │          Pred_15_case_6_step500.ply
+    │          Pred_15_case_6_step600.ply
+    │          Pred_15_case_6_step700.ply
+    │          Pred_15_case_6_step800.ply
+    │          Pred_15_case_6_step900.ply
+    │          Pred_16_case_7_step100.ply
+    │          Pred_16_case_7_step1000.ply
+    │          Pred_16_case_7_step1100.ply
+    │          Pred_16_case_7_step1200.ply
+    │          Pred_16_case_7_step1300.ply
+    │          Pred_16_case_7_step1400.ply
+    │          Pred_16_case_7_step1500.ply
+    │          Pred_16_case_7_step1600.ply
+    │          Pred_16_case_7_step1700.ply
+    │          Pred_16_case_7_step1800.ply
+    │          Pred_16_case_7_step200.ply
+    │          Pred_16_case_7_step300.ply
+    │          Pred_16_case_7_step400.ply
+    │          Pred_16_case_7_step500.ply
+    │          Pred_16_case_7_step600.ply
+    │          Pred_16_case_7_step700.ply
+    │          Pred_16_case_7_step800.ply
+    │          Pred_16_case_7_step900.ply
+    │          Pred_26_case_8_step100.ply
+    │          Pred_26_case_8_step1000.ply
+    │          Pred_26_case_8_step1100.ply
+    │          Pred_26_case_8_step1200.ply
+    │          Pred_26_case_8_step1300.ply
+    │          Pred_26_case_8_step1400.ply
+    │          Pred_26_case_8_step1500.ply
+    │          Pred_26_case_8_step1600.ply
+    │          Pred_26_case_8_step1700.ply
+    │          Pred_26_case_8_step1800.ply
+    │          Pred_26_case_8_step200.ply
+    │          Pred_26_case_8_step300.ply
+    │          Pred_26_case_8_step400.ply
+    │          Pred_26_case_8_step500.ply
+    │          Pred_26_case_8_step600.ply
+    │          Pred_26_case_8_step700.ply
+    │          Pred_26_case_8_step800.ply
+    │          Pred_26_case_8_step900.ply
+    │          Pred_37_case_2_step100.ply
+    │          Pred_37_case_2_step1000.ply
+    │          Pred_37_case_2_step1100.ply
+    │          Pred_37_case_2_step1200.ply
+    │          Pred_37_case_2_step1300.ply
+    │          Pred_37_case_2_step1400.ply
+    │          Pred_37_case_2_step1500.ply
+    │          Pred_37_case_2_step1600.ply
+    │          Pred_37_case_2_step1700.ply
+    │          Pred_37_case_2_step1800.ply
+    │          Pred_37_case_2_step200.ply
+    │          Pred_37_case_2_step300.ply
+    │          Pred_37_case_2_step400.ply
+    │          Pred_37_case_2_step500.ply
+    │          Pred_37_case_2_step600.ply
+    │          Pred_37_case_2_step700.ply
+    │          Pred_37_case_2_step800.ply
+    │          Pred_37_case_2_step900.ply
+    │          Pred_46_case_5_step100.ply
+    │          Pred_46_case_5_step1000.ply
+    │          Pred_46_case_5_step1100.ply
+    │          Pred_46_case_5_step1200.ply
+    │          Pred_46_case_5_step1300.ply
+    │          Pred_46_case_5_step1400.ply
+    │          Pred_46_case_5_step1500.ply
+    │          Pred_46_case_5_step1600.ply
+    │          Pred_46_case_5_step1700.ply
+    │          Pred_46_case_5_step1800.ply
+    │          Pred_46_case_5_step200.ply
+    │          Pred_46_case_5_step300.ply
+    │          Pred_46_case_5_step400.ply
+    │          Pred_46_case_5_step500.ply
+    │          Pred_46_case_5_step600.ply
+    │          Pred_46_case_5_step700.ply
+    │          Pred_46_case_5_step800.ply
+    │          Pred_46_case_5_step900.ply
+    │          training.log
+    │          
+    ├─DataSet
+    ├─figures
+    │      a
+    │      architecture_new.png
+    │      
+    ├─models
+    │  │  backbone.py
+    │  │  building_bloacks.py
+    │  │  crownmvm2.py
+    │  │  loss.py
+    │  │  se.py
+    │  │  utils.py
+    │  │  
+    │  └─__pycache__
+    │          backbone.cpython-311.pyc
+    │          building_bloacks.cpython-310.pyc
+    │          building_bloacks.cpython-311.pyc
+    │          crownmvm.cpython-310.pyc
+    │          crownmvm2.cpython-310.pyc
+    │          crownmvm2.cpython-311.pyc
+    │          loss.cpython-310.pyc
+    │          loss.cpython-311.pyc
+    │          metric.cpython-310.pyc
+    │          se.cpython-310.pyc
+    │          se.cpython-311.pyc
+    │          unet3d.cpython-310.pyc
+    │          utils.cpython-310.pyc
+    │          utils.cpython-311.pyc
+    │          
+    ├─raw_data
+    │      crown.stl
+    │      down_tooth.stl
+    │      up_tooth.stl
+    │      
+    ├─sampledata
+    │      1723719crown.ply
+    │      1723719pna.ply
+    │      readme.md
+    │      
+    ├─SAP
+    │  │  eval_meshes.py
+    │  │  generate.py
+    │  │  generate_psr.py
+    │  │  LICENSE
+    │  │  optim.py
+    │  │  optim_hierarchy.py
+    │  │  README.md
+    │  │  
+    │  ├─configs
+    │  │  │  default.yaml
+    │  │  │  
+    │  │  ├─learning_based
+    │  │  │  │  demo_large_noise.yaml
+    │  │  │  │  demo_outlier.yaml
+    │  │  │  │  
+    │  │  │  ├─noise_large
+    │  │  │  │      ours.yaml
+    │  │  │  │      ours_pretrained.yaml
+    │  │  │  │      
+    │  │  │  ├─noise_small
+    │  │  │  │      ours.yaml
+    │  │  │  │      ours_pretrained.yaml
+    │  │  │  │      
+    │  │  │  └─outlier
+    │  │  │          ours_1x.yaml
+    │  │  │          ours_1x_pretrained.yaml
+    │  │  │          ours_3plane.yaml
+    │  │  │          ours_3x.yaml
+    │  │  │          ours_3x_pretrained.yaml
+    │  │  │          ours_5x.yaml
+    │  │  │          ours_5x_pretrained.yaml
+    │  │  │          ours_7x.yaml
+    │  │  │          ours_7x_pretrained.yaml
+    │  │  │          
+    │  │  └─optim_based
+    │  │          dfaust.yaml
+    │  │          dgp.yaml
+    │  │          teaser.yaml
+    │  │          thingi.yaml
+    │  │          thingi_noisy.yaml
+    │  │          
+    │  ├─scripts
+    │  │  │  download_demo_data.sh
+    │  │  │  download_optim_data.sh
+    │  │  │  download_shapenet.sh
+    │  │  │  easy_mesh_vtk.py
+    │  │  │  generate_phi.py
+    │  │  │  process_shapenet.py
+    │  │  │  process_tooth.py
+    │  │  │  
+    │  │  └─__pycache__
+    │  │          easy_mesh_vtk.cpython-38.pyc
+    │  │          
+    │  └─src
+    │      │  config.py
+    │      │  data_loader.py
+    │      │  dpsr.py
+    │      │  eval.py
+    │      │  generation.py
+    │      │  model.py
+    │      │  model_rgb.py
+    │      │  optimization.py
+    │      │  training.py
+    │      │  utils.py
+    │      │  visualize.py
+    │      │  __init__.py
+    │      │  
+    │      ├─data
+    │      │  │  core.py
+    │      │  │  fields.py
+    │      │  │  transforms.py
+    │      │  │  __init__.py
+    │      │  │  
+    │      │  └─__pycache__
+    │      │          core.cpython-38.pyc
+    │      │          fields.cpython-38.pyc
+    │      │          transforms.cpython-38.pyc
+    │      │          __init__.cpython-38.pyc
+    │      │          
+    │      ├─network
+    │      │  │  decoder.py
+    │      │  │  encoder.py
+    │      │  │  net_rgb.py
+    │      │  │  unet.py
+    │      │  │  unet3d.py
+    │      │  │  utils.py
+    │      │  │  __init__.py
+    │      │  │  
+    │      │  └─__pycache__
+    │      │          decoder.cpython-310.pyc
+    │      │          decoder.cpython-38.pyc
+    │      │          encoder.cpython-310.pyc
+    │      │          encoder.cpython-38.pyc
+    │      │          unet.cpython-310.pyc
+    │      │          unet.cpython-38.pyc
+    │      │          unet3d.cpython-310.pyc
+    │      │          unet3d.cpython-38.pyc
+    │      │          utils.cpython-310.pyc
+    │      │          utils.cpython-38.pyc
+    │      │          __init__.cpython-310.pyc
+    │      │          __init__.cpython-38.pyc
+    │      │          
+    │      └─__pycache__
+    │              config.cpython-38.pyc
+    │              dpsr.cpython-310.pyc
+    │              dpsr.cpython-38.pyc
+    │              generation.cpython-38.pyc
+    │              model.cpython-310.pyc
+    │              model.cpython-38.pyc
+    │              training.cpython-38.pyc
+    │              utils.cpython-310.pyc
+    │              utils.cpython-38.pyc
+    │              __init__.cpython-310.pyc
+    │              
+    ├─train_data
+    │  ├─15
+    │  │  ├─test
+    │  │  │  └─case_6
+    │  │  │          crown.h5
+    │  │  │          pna_crop.h5
+    │  │  │          
+    │  │  └─train
+    │  │      └─case_6
+    │  │              crown.h5
+    │  │              pna_crop.h5
+    │  │              
+    │  ├─16
+    │  │  ├─test
+    │  │  │  └─case_7
+    │  │  │          crown.h5
+    │  │  │          pna_crop.h5
+    │  │  │          
+    │  │  └─train
+    │  │      └─case_1
+    │  │              crown.h5
+    │  │              pna_crop.h5
+    │  │              
+    │  ├─26
+    │  │  ├─test
+    │  │  │  └─case_8
+    │  │  │          crown.h5
+    │  │  │          pna_crop.h5
+    │  │  │          
+    │  │  └─train
+    │  │      └─case_3
+    │  │              crown.h5
+    │  │              pna_crop.h5
+    │  │              
+    │  ├─37
+    │  │  ├─test
+    │  │  │  └─case_2
+    │  │  │          crown.h5
+    │  │  │          pna_crop.h5
+    │  │  │          
+    │  │  └─train
+    │  │      └─case_2
+    │  │              crown.h5
+    │  │              pna_crop.h5
+    │  │              
+    │  └─46
+    │      ├─test
+    │      │  └─case_5
+    │      │          crown.h5
+    │      │          pna_crop.h5
+    │      │          
+    │      └─train
+    │          └─case_4
+    │                  crown.h5
+    │                  pna_crop.h5
+    │                  
+    └─__pycache__
+            dentaldataset.cpython-311.pyc
+            

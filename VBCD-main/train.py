@@ -1,0 +1,415 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+import argparse
+from accelerate import Accelerator
+from models.crownmvm2 import CrownMVM,volume_to_point_cloud_tensor
+from models.loss import curvature_and_margine_penalty_loss
+import os
+import random
+import numpy as np
+import torch.nn.functional as F
+import re
+from torch.optim.lr_scheduler import CosineAnnealingLR
+import logging
+from pytorch3d.loss import chamfer_distance
+from pytorch3d.ops import sample_farthest_points
+import pyvista as pv
+from dentaldataset import *
+from accelerate import DataLoaderConfiguration,DistributedDataParallelKwargs
+focal_loss = True
+curvature_weight = 2
+curvature_weighted_bce = False
+dataloader_config = DataLoaderConfiguration(split_batches=True)
+kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+accelerator = Accelerator(dataloader_config=dataloader_config,kwargs_handlers=[kwargs])
+
+# === 【新增】牙位映射表 ===
+# 将 FDI 牙位编号映射为 0-13 的索引
+# 左右对称的牙齿共享同一个 ID (例如 16 和 26 都是上颌第一磨牙，形态相似)
+TOOTH_MAPPING = {
+    # 上颌 (Upper)
+    '11': 0, '21': 0,  # 中切牙
+    '12': 1, '22': 1,  # 侧切牙
+    '13': 2, '23': 2,  # 尖牙
+    '14': 3, '24': 3,  # 第一前磨牙
+    '15': 4, '25': 4,  # 第二前磨牙
+    '16': 5, '26': 5,  # 第一磨牙 (大牙)
+    '17': 6, '27': 6,  # 第二磨牙
+    # 下颌 (Lower) - 继续往后编，或者区分上下
+    # 这里简单起见，我们将下颌映射到 7-13
+    '31': 7, '41': 7,
+    '32': 8, '42': 8,
+    '33': 9, '43': 9,
+    '34': 10,'44': 10,
+    '35': 11,'45': 11,
+    '36': 12,'46': 12,
+    '37': 13,'47': 13
+}
+
+def volume_to_point_cloud(volume, voxel_size, origin):
+    """
+    将体素网格转换为点云坐标 (修复版：自动处理 Batch 维度)
+    """
+    # 1. 转 numpy 并放到 CPU
+    if isinstance(volume, torch.Tensor):
+        volume = volume.detach().cpu().numpy()
+    if isinstance(origin, torch.Tensor):
+        origin = origin.detach().cpu().numpy()
+    
+    point_clouds = []
+    
+    # 2. 降维处理：如果有多余的 Channel 维 (通常是第2维)，去掉它
+    # 目标是将 input 统一成 (Batch, X, Y, Z) 或 (X, Y, Z)
+    if volume.ndim == 5: # (B, C, D, H, W)
+        volume = volume[:, 0, :, :, :] # 取第0个通道 -> (B, D, H, W)
+    elif volume.ndim == 4 and volume.shape[0] == 1: # (1, D, H, W) or (C, D, H, W)
+        # 这里有些模糊，但通常验证集 batch=1，直接降维
+        volume = volume[0] # -> (D, H, W)
+        # 如果变为了3维，下面会进入单样本逻辑；如果是多样本 batch，走下面逻辑
+
+    # 3. 分情况处理
+    if volume.ndim == 4: # (Batch, D, H, W)
+        batch_size = volume.shape[0]
+        for b in range(batch_size):
+            vol_3d = volume[b]
+            # 处理对应的 Origin
+            curr_origin = origin[b] if (origin.ndim == 2 and origin.shape[0] == batch_size) else origin
+            
+            # np.where 返回 (d, h, w)
+            indices = np.where(vol_3d > 0.5)
+            if len(indices[0]) == 0:
+                point_clouds.append(np.zeros((0, 3)))
+                continue
+            
+            z_idx, y_idx, x_idx = indices[0], indices[1], indices[2]
+            
+            # 坐标转换: 原点 + 索引 * 步长
+            # 注意：dentaldataset通常是 z, y, x 顺序 (D,H,W)，请根据实际调整
+            # 假设 origin 是 (x, y, z)，而 indices 是 (z, y, x)
+            # 这里的对应关系非常关键，根据 dataset 代码，通常 dim 0 是 z (depth)
+            
+            px = curr_origin[0] + x_idx * voxel_size[0]
+            py = curr_origin[1] + y_idx * voxel_size[1]
+            pz = curr_origin[2] + z_idx * voxel_size[2]
+            
+            pc = np.stack([px, py, pz], axis=1)
+            point_clouds.append(pc)
+
+    elif volume.ndim == 3: # (D, H, W) - 单个样本
+        indices = np.where(volume > 0.5)
+        if len(indices[0]) == 0:
+            return [np.zeros((0, 3))]
+            
+        z_idx, y_idx, x_idx = indices[0], indices[1], indices[2]
+        
+        # 处理 Origin (如果是 batch 形式的 origin，取第一个)
+        curr_origin = origin[0] if origin.ndim == 2 else origin
+        
+        px = curr_origin[0] + x_idx * voxel_size[0]
+        py = curr_origin[1] + y_idx * voxel_size[1]
+        pz = curr_origin[2] + z_idx * voxel_size[2]
+        
+        point_clouds.append(np.stack([px, py, pz], axis=1))
+
+    return point_clouds
+
+def setup_logging(log_file):
+    logging.basicConfig(filename=log_file, level=logging.INFO,
+                        format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.info("Training started.")
+
+def cycle(dl):
+    while True:
+        for data in dl:
+            yield data
+
+def train(model, train_loader, val_loader,args,log_file):
+    model.to(accelerator.device)
+
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    scheduler = CosineAnnealingLR(optimizer, T_max=args.num_steps)
+    model, optimizer, train_loader, val_loader = accelerator.prepare(model, optimizer, train_loader, val_loader)
+    train_loader = cycle(train_loader)
+    
+    
+    
+    initial_step = 0
+    step = initial_step
+    best_val_dice = 0.0
+    with tqdm(total=args.num_steps, desc="Training", unit="step") as pbar:
+        while step < args.num_steps + initial_step:
+            model.train()
+            total_loss = 0.0
+            for _ in range(args.accumulation_steps):
+                inputs,targets,pointcloud_inform,batch_y,min_bound_crop,file_dirs = next(train_loader)
+                if curvature_weighted_bce:
+                    curvatures = targets[:,-1,:,:,:]
+                    non_zero_mask = curvatures != 0
+                    curvatures_weighted = torch.where(non_zero_mask, 1+curvatures, curvatures)
+                    criterition = nn.BCEWithLogitsLoss(weight=torch.exp(curvatures_weighted.unsqueeze(1)))
+                else:
+                    criterition = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(10.0))
+                with accelerator.autocast():
+                    # voxel_ind,voxel_normal,refined_pos_with_normal,batch_x = model(inputs,min_bound_crop)
+                    # if step % 2500 ==0  : logging.info(f'The front points has {refined_pos_with_normal.shape[0]} points')
+
+                    prompts_list = []
+                for path in file_dirs:
+                    # 从路径中通过字符串匹配找到牙位 (例如路径包含 '/16/')
+                    tooth_id = 0 # 默认值
+                    for t_str, t_idx in TOOTH_MAPPING.items():
+                        # 兼容 Windows(\) 和 Linux(/) 路径分隔符
+                        if f"/{t_str}/" in path or f"\\{t_str}\\" in path:
+                            tooth_id = t_idx
+                            break
+                    prompts_list.append(tooth_id)
+                
+                    # 转为 Tensor 并送入设备
+                    real_prompt = torch.tensor(prompts_list, dtype=torch.long).to(accelerator.device)
+
+                    # 【修改 3】传入真实的 prompt
+                    outputs = model(inputs, real_prompt)
+                    
+                    # 【兼容性处理】防止模型返回 3 个值而 train.py 想要 4 个值导致崩溃
+                    if len(outputs) == 4:
+                        voxel_ind, voxel_normal, refined_pos_with_normal, batch_x = outputs
+                    else:
+                        # 如果 crownmvm2.py 还没改，它只会返回 3 个值
+                        voxel_ind, refined_pos_with_normal, batch_x = outputs
+                        # 临时从 voxel_ind 伪造一个 voxel_normal 以便代码能往下跑 (稍后去改模型)
+                        voxel_normal = voxel_ind.repeat(1, 3, 1, 1, 1) 
+
+                    if step % 2500 == 0:
+                        logging.info(f'The front points has {refined_pos_with_normal.shape[0]} points')
+
+                    bce_loss = criterition(voxel_ind,targets[:,:1,:,:,:])
+                    cpl,normal_loss = curvature_and_margine_penalty_loss(refined_pos_with_normal,pointcloud_inform,batch_x=batch_x,batch_y=batch_y) if step>100000 else (0,0)
+                    refine_loss = 0.1*cpl + normal_loss
+                    loss = bce_loss + F.mse_loss(voxel_normal,targets[:,1:4,:,:,:]) + refine_loss 
+                    loss = loss/ args.accumulation_steps
+                    total_loss += loss.item()
+                accelerator.backward(loss)
+           
+            pbar.set_description(f'loss: {total_loss:.4f}')
+            accelerator.wait_for_everyone()
+            accelerator.clip_grad_norm_(model.parameters(), 1)
+            optimizer.step()
+            optimizer.zero_grad()
+            scheduler.step()
+            accelerator.wait_for_everyone()    
+
+            step += 1
+            
+            if accelerator.is_main_process:
+                if step % args.validation_interval == 0 or step == args.num_steps:
+                    val_dice= validate(model, val_loader, step=step,save_path=args.save_path)
+                    logging.info(f"Step [{step}/{args.num_steps}], Validation hausdorff: {val_dice:.4f}")
+                    
+                    if step % args.validation_interval == 0:
+                        valmodel = accelerator.unwrap_model(model)
+                        step_model_path = args.save_path.replace('.pth', f'_step_{step}.pth')
+                        torch.save(valmodel.state_dict(), step_model_path)
+                        logging.info(f"Saved model at step {step}")
+                    
+                    if val_dice < best_val_dice:
+                        best_val_dice = val_dice
+                        valmodel = accelerator.unwrap_model(model)
+                        best_model_path = args.save_path.replace('.pth', '_best.pth')
+                        torch.save(valmodel.state_dict(), best_model_path)
+                        print(f"Saved best model at step {step}")
+            pbar.update(1)
+            if step % args.log_interval == 0:
+                logging.info(f"Step {step} - BCE: {bce_loss:.4f} - Normal: {normal_loss:.4f} - Chamfer {cpl:.4f}")
+
+def dice_coefficient(tensor1, tensor2, epsilon=1e-6):
+    assert tensor1.shape == tensor2.shape, "两个输入张量的形状必须相同"
+    tensor1 = tensor1.float()
+    tensor2 = tensor2.float()
+
+    intersection = (tensor1 * tensor2).sum(dim=(2, 3, 4))
+    volumes_sum = tensor1.sum(dim=(2, 3, 4)) + tensor2.sum(dim=(2, 3, 4))
+
+    dice = (2.0 * intersection + epsilon) / (volumes_sum + epsilon)
+    return dice.mean()
+
+# def validate(model, val_loader, step,save_path='./chamfer_validation_outputs'):
+#     model.eval()
+#     val_hausdorff = 0.0
+#     with torch.no_grad():
+         
+#         for batch_idx,(inputs,targets,pointcloud_inform,batch_y,min_bound_crop,file_dir) in enumerate(val_loader):
+           
+#             with accelerator.autocast():
+#                 # voxel_ind,voxel_normal,refined_pos_with_normal,batch_x = model(inputs,min_bound_crop)
+#                 # 【修复】同样生成一个假的牙位编号 (整数 0)
+#                 dummy_prompt = torch.zeros(inputs.shape[0], dtype=torch.long).to(accelerator.device)
+                
+#                 # 【修复】把 min_bound_crop 换成 dummy_prompt
+#                 # 注意：因为你之前已经修改了 crownmvm2.py 让它返回 4 个值，这里直接接收 4 个值即可
+#                 voxel_ind, voxel_normal, refined_pos_with_normal, batch_x = model(inputs, dummy_prompt)   
+#             position_indicator = F.sigmoid(voxel_ind)
+#             position_indicator = (position_indicator>0.5).float()
+
+#             outputs_pc = volume_to_point_cloud(volume=position_indicator,voxel_size=(0.3125,0.3125,0.3125),origin=min_bound_crop.cpu())
+#             hausdorff = dice_coefficient(position_indicator,targets[:,:1,:,:,:]).item()
+#             val_hausdorff += hausdorff
+#             if batch_idx < 2:
+#                 targets_np = targets.cpu().numpy()
+#                 for i in range(len(outputs_pc)):
+#                     mask = (batch_y == i)
+#                     gtpoints = pointcloud_inform[mask][:,:3].cpu().numpy()
+#                     point_cloud_gt = pv.PolyData(gtpoints)
+#                     point_cloud = pv.PolyData(outputs_pc[i])
+#                     output_filename = os.path.join(save_path[:-4], f"output_batch{batch_idx+1}_sample{i+1}_step{step}.ply")
+#                     gt_filename = os.path.join(save_path[:-4], f"output_batch{batch_idx+1}_gt{i+1}_step{step}.ply")
+#                     point_cloud.save(output_filename)
+#                     point_cloud_gt.save(gt_filename)
+#                     logging.info(f"Saved: {output_filename}")
+#                     logging.info(f"Saved: {gt_filename}")
+                
+#     val_hausdorff/=len(val_loader)
+  
+#     return val_hausdorff
+
+def validate(model, val_loader, step, save_path='./chamfer_validation_outputs'):
+    model.eval()
+    val_hausdorff = 0.0
+    
+    # 确保保存目录存在
+    if not os.path.exists(save_path[:-4]):
+        os.makedirs(save_path[:-4])
+
+    with torch.no_grad():
+        for batch_idx, (inputs, targets, pointcloud_inform, batch_y, min_bound_crop, file_dir) in enumerate(val_loader):
+            with accelerator.autocast():
+                # 【修改 1】同样的动态生成逻辑
+                prompts_list = []
+                for path in file_dir:
+                    tooth_id = 0
+                    for t_str, t_idx in TOOTH_MAPPING.items():
+                        if f"/{t_str}/" in path or f"\\{t_str}\\" in path:
+                            tooth_id = t_idx
+                            break
+                    prompts_list.append(tooth_id)
+                
+                real_prompt = torch.tensor(prompts_list, dtype=torch.long).to(accelerator.device)
+                
+                # 【修改 2】传入 real_prompt
+                outputs = model(inputs, real_prompt)
+                
+                if len(outputs) == 4:
+                    voxel_ind, voxel_normal, refined_pos_with_normal, batch_x = outputs
+                else:
+                    # 如果模型只返回了3个，我们就手动接住，不让它报错
+                    voxel_ind, refined_pos_with_normal, batch_x = outputs
+                    # 验证阶段用不到 voxel_normal，所以这里不需要也没关系
+
+            position_indicator = F.sigmoid(voxel_ind)
+            position_indicator = (position_indicator > 0.5).float()
+
+            # 【防弹修复 3】必须使用 0.3125 的体素大小，否则生成的模型尺寸是错的！
+            outputs_pc = volume_to_point_cloud(
+                volume=position_indicator,
+                voxel_size=(0.3125, 0.3125, 0.3125), 
+                origin=min_bound_crop.cpu()
+            )
+            
+            # 计算 Dice 系数 (相似度)
+            hausdorff = dice_coefficient(position_indicator, targets[:, :1, :, :, :]).item()
+            val_hausdorff += hausdorff
+            
+            # 只保存前两个 Batch 的可视化结果
+# 只要是验证集，我们尽量都保存下来看看，或者只保存前几批
+# 遍历当前 Batch 里的每一个样本
+            for i in range(len(outputs_pc)):
+                # === 【修改 2】智能解析文件名 (防止覆盖) ===
+                current_path = file_dir[i] # 获取真实路径
+                
+                # 统一路径分隔符并拆分
+                norm_path = os.path.normpath(current_path)
+                if norm_path.endswith(os.sep): norm_path = norm_path[:-1]
+                path_parts = norm_path.split(os.sep)
+                
+                # 你的路径结构: .../train_data/16/test/case_7
+                # 倒数第1个: case_7 (病例名)
+                # 倒数第3个: 16 (牙位)
+                case_name = path_parts[-1] 
+                tooth_id = path_parts[-3]  
+                
+                # 组合成唯一的文件名
+                pred_name = f"Pred_{tooth_id}_{case_name}_step{step}.ply"
+                gt_name = f"GT_{tooth_id}_{case_name}_step{step}.ply"
+
+                output_filename = os.path.join(save_path[:-4], pred_name)
+                gt_filename = os.path.join(save_path[:-4], gt_name)
+                
+                # === 保存预测结果 ===
+                point_cloud = pv.PolyData(outputs_pc[i])
+                point_cloud.save(output_filename)
+                
+                # === 保存 GT 结果 ===
+                mask = (batch_y == i)
+                if mask.sum() > 0:
+                    gtpoints = pointcloud_inform[mask][:, :3].cpu().numpy()
+                    point_cloud_gt = pv.PolyData(gtpoints)
+                    point_cloud_gt.save(gt_filename)
+                    
+                logging.info(f"Saved: {output_filename}")
+                
+    if len(val_loader) > 0:
+        val_hausdorff /= len(val_loader)
+    else:
+        val_hausdorff = 0.0
+  
+    return val_hausdorff
+
+def load_data(batch_size=4, train_path='./train_data'):
+    train_dataset = IOS_Datasetv2(train_path)
+    val_dataset = IOS_Datasetv2(train_path,is_train=False)
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size,num_workers=0, shuffle=True,collate_fn=train_dataset.collate_fn)
+    logging.info(f"Length of train dataloader {len(train_loader)}")
+    val_loader = DataLoader(val_dataset, batch_size=2,num_workers=0, shuffle=False,collate_fn=train_dataset.collate_fn)
+    logging.info(f"Length of val dataloader {len(val_loader)}")
+    return train_loader, val_loader
+
+def seed_everything(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--batch_size', type=int, default=4, help='Batch size for training')
+    parser.add_argument('--num_steps', type=int, default=1000, help='Total number of steps for training')
+    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
+    parser.add_argument('--weight_decay', type=float, default=1e-5, help='Weight decay for optimizer')
+    parser.add_argument('--accumulation_steps', type=int, default=4, help='Number of steps for gradient accumulation')
+    parser.add_argument('--save_path', type=str, default='./unet3d_model.pth', help='Path to save the trained model')
+    parser.add_argument('--train_path', type=str, default='./train_data', help='Path to training data')
+    parser.add_argument('--val_path', type=str, default='./val_data', help='Path to validation data')
+    parser.add_argument('--validation_interval',type=int,default=4000,help='interval steps to validate')
+    parser.add_argument('--continue_ckpt_dir',type=str,required=False,help='whether to use exist ckpt')
+    parser.add_argument('--log_interval', type=int, default=50, help='Interval steps to log training information')
+    args = parser.parse_args()
+    model = CrownMVM(in_channels=4,out_channels=4)
+    if args.continue_ckpt_dir:
+        ckpt = torch.load(args.continue_ckpt_dir)
+        ckpt = {k[7:] if k.startswith('module.') else k: v for k, v in ckpt.items()}
+        model.load_state_dict(ckpt)
+        print('load checkpoint complete')
+    if not os.path.exists(args.save_path[:-4]):
+        os.makedirs(args.save_path[:-4])
+    log_file = os.path.join(args.save_path[:-4],'training.log')
+    setup_logging(log_file)
+    train_loader, val_loader = load_data(batch_size=args.batch_size, train_path=args.train_path)
+    train(model, train_loader, val_loader, args,log_file=log_file)
+if __name__== "__main__":
+    seed_everything(42)
+    main()
