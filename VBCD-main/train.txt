@@ -186,7 +186,7 @@ def train(model, train_loader, val_loader,args,log_file):
                         logging.info(f'The front points has {refined_pos_with_normal.shape[0]} points')
 
                     bce_loss = criterition(voxel_ind,targets[:,:1,:,:,:])
-                    cpl,normal_loss = curvature_and_margine_penalty_loss(refined_pos_with_normal,pointcloud_inform,batch_x=batch_x,batch_y=batch_y) if step>400 else (0,0) #这里原本是100000步才进行法向量预测
+                    cpl,normal_loss = curvature_and_margine_penalty_loss(refined_pos_with_normal,pointcloud_inform,batch_x=batch_x,batch_y=batch_y) if step>5000 else (0,0) #这里原本是100000步才进行法向量预测
                     refine_loss = 0.1*cpl + normal_loss
                     loss = bce_loss + F.mse_loss(voxel_normal,targets[:,1:4,:,:,:]) + refine_loss 
                     loss = loss/ args.accumulation_steps
